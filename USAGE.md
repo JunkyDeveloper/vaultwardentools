@@ -157,6 +157,13 @@ This allows other login mechanisms such as totp or api key:
 example 1:
 
 ```python
+client = Client(server, email, password, client_id=client_id, client_secret=client_secret)
+client.login(grant_type="client_credentials",scope="api", deviceType=21)
+```
+
+example 2:
+
+```python
 
 def mfa2fa(loginpayload):
     totp = pyotp.TOTP(otpseed)
@@ -172,7 +179,7 @@ def mfa2fa(loginpayload):
 client = Client(server, email, password, authentication_cb=mfa2fa)
 ```
 
-example 1:
+example 3:
 
 ```python
 def api_key(loginpayload):
@@ -250,4 +257,3 @@ We provide a ``bitwardentools.client.bust_cache`` method to invalidate any cache
 from bitwardentools.client import bust_cache
 bust_cache()
 ```
-

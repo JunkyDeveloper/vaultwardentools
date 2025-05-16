@@ -449,12 +449,12 @@ def unmarshall_value(value, cycle=0):
 
 class BWFactory(object):
     def __init__(
-        self,
-        jsond=None,
-        client=None,
-        vaultier=False,
-        vaultiersecretid=None,
-        unmarshall=False,
+            self,
+            jsond=None,
+            client=None,
+            vaultier=False,
+            vaultiersecretid=None,
+            unmarshall=False,
     ):
         if unmarshall:
             jsond = unmarshall_value(jsond)
@@ -525,15 +525,15 @@ class BWFactory(object):
 
     @classmethod
     def construct(
-        kls,
-        jsond,
-        vaultier=None,
-        vaultiersecretid=None,
-        unmarshall=False,
-        object_class=None,
-        client=None,
-        *a,
-        **kw,
+            kls,
+            jsond,
+            vaultier=None,
+            vaultiersecretid=None,
+            unmarshall=False,
+            object_class=None,
+            client=None,
+            *a,
+            **kw,
     ):
         if object_class is None:
             object_class_name = jsond.get("object", jsond.get("Object", ""))
@@ -638,6 +638,8 @@ class Organization(BWFactory):
         self._complete = False
         return ret
 
+class Organizationuseruserdetails(BWFactory):
+    """."""
 
 class Cipher(BWFactory):
     """."""
@@ -752,21 +754,22 @@ Orgcollection = Collection
 
 class Client(object):
     def __init__(
-        self,
-        server=SERVER,
-        email=EMAIL,
-        password=PASSWORD,
-        admin_user=ADMIN_USER,
-        admin_password=ADMIN_PASSWORD,
-        private_key=PRIVATE_KEY,
-        client_id="python",
-        client_uuid=CUUID,
-        login=True,
-        cache=None,
-        vaultier=False,
-        authentication_cb=None,
-        multiuser=False,
-        version=None,
+            self,
+            server=SERVER,
+            email=EMAIL,
+            password=PASSWORD,
+            admin_user=ADMIN_USER,
+            admin_password=ADMIN_PASSWORD,
+            private_key=PRIVATE_KEY,
+            client_id="python",
+            client_secret=None,
+            client_uuid=CUUID,
+            login=True,
+            cache=None,
+            vaultier=False,
+            authentication_cb=None,
+            multiuser=False,
+            version=None,
     ):
         # goal is to allow shared cache amongst client instances
         # but also if we want totally isolated caches
@@ -794,6 +797,7 @@ class Client(object):
         self.email = email.lower()
         self.sessions = OrderedDict()
         self.client_id = client_id
+        self.client_secret = client_secret
         self.client_uuid = client_uuid
         self.templates = {}
         self._cache = cache
@@ -802,7 +806,7 @@ class Client(object):
         if login:
             self.login()
         self._is_vaultwarden = False
-        self._version = None
+        self._version = version
         self._api_keys = None
 
     @property
@@ -815,14 +819,14 @@ class Client(object):
         return self.tokens[self.email]
 
     def adminr(
-        self,
-        uri,
-        method="post",
-        headers=None,
-        admin_user=None,
-        admin_password=None,
-        *a,
-        **kw,
+            self,
+            uri,
+            method="post",
+            headers=None,
+            admin_user=None,
+            admin_password=None,
+            *a,
+            **kw,
     ):
         admin_user = admin_user or self.admin_user
         admin_password = admin_password or self.admin_password
@@ -849,15 +853,15 @@ class Client(object):
         return self._api_keys
 
     def r(
-        self,
-        uri,
-        method="post",
-        headers=None,
-        token=None,
-        retry=True,
-        multiuser=MARKER,
-        *a,
-        **kw,
+            self,
+            uri,
+            method="post",
+            headers=None,
+            token=None,
+            retry=True,
+            multiuser=MARKER,
+            *a,
+            **kw,
     ):
         url = uri
         if not url.startswith("http"):
@@ -892,13 +896,17 @@ class Client(object):
         return resp
 
     def login(
-        self,
-        email=None,
-        password=None,
-        scope="api offline_access",
-        grant_type="password",
-        force=None,
+            self,
+            email=None,
+            password=None,
+            scope="api offline_access",
+            grant_type="password",
+            force=None,
+            deviceType=9
     ):
+        """
+        
+        """
         email = email or self.email
         try:
             if force:
@@ -928,7 +936,7 @@ class Client(object):
             "grant_type": grant_type,
             "username": email,
             "password": hashed_password,
-            "deviceType": 9,
+            "deviceType": deviceType,
             "deviceIdentifier": self.client_uuid,
             "deviceName": "pyinviter",
         }
@@ -993,19 +1001,19 @@ class Client(object):
         return session
 
     def call(
-        self,
-        cli,
-        input=None,
-        asjson=True,
-        capture_output=True,
-        load=False,
-        shell=True,
-        sync=False,
-        force_login=False,
-        no_session=False,
-        user=None,
-        email=None,
-        vaultier=None,
+            self,
+            cli,
+            input=None,
+            asjson=True,
+            capture_output=True,
+            load=False,
+            shell=True,
+            sync=False,
+            force_login=False,
+            no_session=False,
+            user=None,
+            email=None,
+            vaultier=None,
     ):
         vaultier = self.get_vaultier(vaultier)
         if force_login or not no_session:
@@ -1105,9 +1113,9 @@ class Client(object):
                         f"token: {temail} / sync token: {semail} / remote profile: {pemail}"
                     )
         if (
-            not self.multiuser
-            and self._cache["sync"]
-            and (is_different_token or LOGIN_ENDPOINT_RE.search(url))
+                not self.multiuser
+                and self._cache["sync"]
+                and (is_different_token or LOGIN_ENDPOINT_RE.search(url))
         ):
             self.bust_cache()
             return True
@@ -1174,7 +1182,7 @@ class Client(object):
         except AssertionError:
             sdata = self.api_sync(sync=sync)
             for orga in sdata.get(self.api_keys["profile"], {}).get(
-                self.api_keys["organizations"], []
+                    self.api_keys["organizations"], []
             ):
                 orga = deepcopy(orga)
                 orga[self.api_keys["object"]] = self.api_keys["organization"]
@@ -1267,7 +1275,7 @@ class Client(object):
         return val
 
     def _cache_objects(
-        self, items, cache_key=None, cache=None, attributes=None, uniques=None, id_=None
+            self, items, cache_key=None, cache=None, attributes=None, uniques=None, id_=None
     ):
         if not isinstance(items, (list, tuple)):
             items = [items]
@@ -1372,16 +1380,16 @@ class Client(object):
     _patch = _edit
 
     def create_item(
-        self,
-        name,
-        orga=None,
-        last_known_revision_date=None,
-        favorite=False,
-        collections=None,
-        cipher_type=CipherType.Login,
-        method="post",
-        token=None,
-        **jsond,
+            self,
+            name,
+            orga=None,
+            last_known_revision_date=None,
+            favorite=False,
+            collections=None,
+            cipher_type=CipherType.Login,
+            method="post",
+            token=None,
+            **jsond,
     ):
         name_or_obj = name
         if isinstance(name_or_obj, BWFactory):
@@ -1514,14 +1522,14 @@ class Client(object):
         return obj
 
     def create_organization(
-        self,
-        name,
-        email=None,
-        collection_name=None,
-        collection_key=None,
-        plan_type=0,
-        token=None,
-        **jsond,
+            self,
+            name,
+            email=None,
+            collection_name=None,
+            collection_key=None,
+            plan_type=0,
+            token=None,
+            **jsond,
     ):
         if collection_name is None:
             collection_name = f"C: {name}"
@@ -1565,8 +1573,8 @@ class Client(object):
                         [
                             (a[self.api_keys["id"]], a)
                             for a in sdata.get(self.api_keys["profile"], {}).get(
-                                self.api_keys["organizations"], []
-                            )
+                            self.api_keys["organizations"], []
+                        )
                         ]
                     )
                     .get(orga.id, {})
@@ -1587,7 +1595,7 @@ class Client(object):
         exc.instance = orga
         raise exc
 
-    def edit_orgcollection(self, collection, token=None, **jsond):
+    def edit_orgcollection(self, collection, groups=[], token=None, **jsond):
         """
         jsond possible keys: {"name":"foo","groups":[]}
         """
@@ -1598,7 +1606,7 @@ class Client(object):
         data.update(jsond)
         for i, v in {
             "name": obj.name,
-            "groups": [],
+            "groups": groups,
         }.items():
             data.setdefault(i, v)
         if not bwcrypto.SYM_ENCRYPTED_STRING_RE.match(data["name"]):
@@ -1632,7 +1640,7 @@ class Client(object):
         return self._version, self._is_vaultwarden
 
     def create_orgcollection(
-        self, name, organizationId=None, orga=None, externalId=None, token=None, **jsond
+            self, name, organizationId=None, orga=None, groups=[], users=[], externalId=None, token=None, **jsond
     ):
         orga = self.get_organization(organizationId or orga)
         token = self.get_token(token)
@@ -1640,9 +1648,9 @@ class Client(object):
         encoded_name = bwcrypto.encrypt(bwcrypto.CIPHERS.sym, name, k)
         v, i = self.version()
         if i and (v > API_CHANGES["1.27.0"]):
-            data = {"externalId": "", "groups": [], "users": [], "name": encoded_name}
+            data = {"externalId": "", "groups": groups, "users": users, "name": encoded_name}
         else:
-            data = {"externalId": "", "groups": [], "name": encoded_name}
+            data = {"externalId": "", "groups": groups, "name": encoded_name}
         log = "Creating :"
         if orga:
             log += f" in orga: {orga.name}/{orga.id}:"
@@ -1686,9 +1694,9 @@ class Client(object):
             assert _CACHE["sync"]
         except AssertionError:
             for enccol in (
-                self.r("/api/collections", method="get")
-                .json()
-                .get(self.api_keys["data"], [])
+                    self.r("/api/collections", method="get")
+                            .json()
+                            .get(self.api_keys["data"], [])
             ):
                 col = BWFactory.construct(enccol, client=self, unmarshall=True)
                 _, colk = self.get_organization_key(col.organizationId, token=token)
@@ -1711,13 +1719,13 @@ class Client(object):
         return ret
 
     def get_collection(
-        self,
-        item_or_id_or_name=None,
-        externalId=None,
-        collections=None,
-        sync=False,
-        orga=None,
-        token=None,
+            self,
+            item_or_id_or_name=None,
+            externalId=None,
+            collections=None,
+            sync=False,
+            orga=None,
+            token=None,
     ):
         criteria = [item_or_id_or_name, orga]
         token = self.get_token(token)
@@ -1784,7 +1792,7 @@ class Client(object):
         raise exc
 
     def decrypt(
-        self, value, key=None, orga=None, token=None, recursion=None, dictkey=None
+            self, value, key=None, orga=None, token=None, recursion=None, dictkey=None
     ):
         token = self.get_token(token=token)
         self.invalidate_other_user_cache(token=token)
@@ -1860,14 +1868,14 @@ class Client(object):
         return nvalue
 
     def get_ciphers(
-        self,
-        collection=None,
-        vaultier=None,
-        collections=None,
-        orga=None,
-        sync=None,
-        token=None,
-        cache=None,
+            self,
+            collection=None,
+            vaultier=None,
+            collections=None,
+            orga=None,
+            sync=None,
+            token=None,
+            cache=None,
     ):
         vaultier = self.get_vaultier(vaultier)
         token = self.get_token(token=token)
@@ -1916,13 +1924,13 @@ class Client(object):
             return scache["by_cipher"]
 
     def get_attachments(
-        self,
-        item,
-        collection=None,
-        collections=None,
-        orga=None,
-        vaultier=None,
-        token=None,
+            self,
+            item,
+            collection=None,
+            collections=None,
+            orga=None,
+            vaultier=None,
+            token=None,
     ):
         vaultier = self.get_vaultier(vaultier)
         token = self.get_token(token)
@@ -1945,14 +1953,14 @@ class Client(object):
             raise exc
 
     def delete_attachment(
-        self,
-        item,
-        attachment,
-        collection=None,
-        collections=None,
-        orga=None,
-        vaultier=None,
-        token=None,
+            self,
+            item,
+            attachment,
+            collection=None,
+            collections=None,
+            orga=None,
+            vaultier=None,
+            token=None,
     ):
         vaultier = self.get_vaultier(vaultier)
         token = self.get_token(token)
@@ -1974,14 +1982,14 @@ class Client(object):
         return res
 
     def delete_attachments(
-        self,
-        item,
-        attachments,
-        collection=None,
-        collections=None,
-        orga=None,
-        vaultier=None,
-        token=None,
+            self,
+            item,
+            attachments,
+            collection=None,
+            collections=None,
+            orga=None,
+            vaultier=None,
+            token=None,
     ):
         vaultier = self.get_vaultier(vaultier)
         token = self.get_token(token)
@@ -2004,14 +2012,14 @@ class Client(object):
         return ret
 
     def attach(
-        self,
-        item,
-        filepath,
-        collection=None,
-        collections=None,
-        orga=None,
-        vaultier=None,
-        token=None,
+            self,
+            item,
+            filepath,
+            collection=None,
+            collections=None,
+            orga=None,
+            vaultier=None,
+            token=None,
     ):
         vaultier = self.get_vaultier(vaultier)
         token = self.get_token(token)
@@ -2067,15 +2075,15 @@ class Client(object):
         return vaultier
 
     def get_cipher(
-        self,
-        item_or_id_or_name,
-        collection=None,
-        collections=None,
-        orga=None,
-        as_list=False,
-        vaultier=None,
-        sync=None,
-        token=None,
+            self,
+            item_or_id_or_name,
+            collection=None,
+            collections=None,
+            orga=None,
+            as_list=False,
+            vaultier=None,
+            sync=None,
+            token=None,
     ):
         if isinstance(item_or_id_or_name, Item):
             if not sync:
@@ -2131,7 +2139,7 @@ class Client(object):
                 # but still let 1 collection error message trigger the exception
                 pass
         collectionn = (
-            isinstance(collection, Collection) and collection.name or collection
+                isinstance(collection, Collection) and collection.name or collection
         )
         exc = SecretNotFound(f"No such cipher found {_id} in collection {collectionn}")
         exc.criteria = [_id, collection, orga]
@@ -2147,13 +2155,13 @@ class Client(object):
         return BWFactory.edit(self, *args, **kw)
 
     def link(
-        self,
-        ciphers,
-        relcollections,
-        collections=None,
-        orga=None,
-        token=None,
-        link=True,
+            self,
+            ciphers,
+            relcollections,
+            collections=None,
+            orga=None,
+            token=None,
+            link=True,
     ):
         ret = []
         token = self.get_token(token)
@@ -2192,15 +2200,15 @@ class Client(object):
                 todo = [a for a in colids if a not in relcolids]
             for relcollection in ret:
                 msg = (
-                    link
-                    and (
-                        f"Will link cipher {cipher.name}/{cipher.id}"
-                        f" to {relcollection.name}/{relcollection.id}"
-                    )
-                    or (
-                        f"cipher {cipher.name}/{cipher.id} will be unlinked"
-                        f" to {relcollection.name}/{relcollection.id}"
-                    )
+                        link
+                        and (
+                            f"Will link cipher {cipher.name}/{cipher.id}"
+                            f" to {relcollection.name}/{relcollection.id}"
+                        )
+                        or (
+                            f"cipher {cipher.name}/{cipher.id} will be unlinked"
+                            f" to {relcollection.name}/{relcollection.id}"
+                        )
                 )
                 L.info(msg)
             if todo == colids:
@@ -2367,8 +2375,20 @@ class Client(object):
         exc.criteria = criteria
         raise exc
 
+    def get_users_from_organization(self, orga, token=None):
+        token = self.get_token(token)
+        orga = self.get_organization(orga, token=token)
+        res = self.r(f"/api/organizations/{orga.id}/users", method="get")
+        users = []
+        for user in res.json()["data"]:
+            users.append(BWFactory.construct(user,
+                                             client=self,
+                                             unmarshall=True,
+                                             ))
+        return users
+
     def assert_bw_response(
-        self, response, expected_status_codes=None, expected_callback=None, *a, **kw
+            self, response, expected_status_codes=None, expected_callback=None, *a, **kw
     ):
         if not expected_status_codes:
             expected_status_codes = [200]
@@ -2470,15 +2490,15 @@ class Client(object):
         return user
 
     def create_user(
-        self,
-        email,
-        password=None,
-        passwordlength=32,
-        name=None,
-        passwordhint=None,
-        iterations=bwcrypto.ITERATIONS,
-        auto_validate=True,
-        **json,
+            self,
+            email,
+            password=None,
+            passwordlength=32,
+            name=None,
+            passwordhint=None,
+            iterations=bwcrypto.ITERATIONS,
+            auto_validate=True,
+            **json,
     ):
         if email:
             email = email.lower()
@@ -2560,7 +2580,7 @@ class Client(object):
         """
         ret = []
         for ix, ((typ, i), obj) in enumerate(
-            self.search(json_or_obj, types=types, sync=sync, **kw).items()
+                self.search(json_or_obj, types=types, sync=sync, **kw).items()
         ):
             if limit is not None and len(ret) > limit:
                 break
@@ -2569,11 +2589,11 @@ class Client(object):
 
     def warm(self, sync=None, collections=None, users=None, ciphers=None, orgas=None):
         if (
-            sync is None
-            and collections is None
-            and ciphers is None
-            and orgas is None
-            and users is None
+                sync is None
+                and collections is None
+                and ciphers is None
+                and orgas is None
+                and users is None
         ):
             sync = True
         if sync is not None:
@@ -2810,14 +2830,14 @@ class Client(object):
                 return ret
 
     def _orga_args(
-        self,
-        token=None,
-        access_level=None,
-        sync=None,
-        remove=None,
-        accessAll=None,
-        collections=None,
-        permissions=None,
+            self,
+            token=None,
+            access_level=None,
+            sync=None,
+            remove=None,
+            accessAll=None,
+            collections=None,
+            permissions=None,
     ):
         token = self.get_token(token)
         if collections:
@@ -2849,17 +2869,18 @@ class Client(object):
         return token, access_level, accessAll, permissions, remove, collections
 
     def add_user_to_organization(
-        self,
-        emails_or_users,
-        orga,
-        collections=None,
-        token=None,
-        sync=None,
-        access_level=None,
-        permissions=None,
-        accessAll=None,
-        readonly=False,
-        hidepasswords=False,
+            self,
+            emails_or_users,
+            orga,
+            collections=None,
+            token=None,
+            sync=None,
+            access_level=None,
+            permissions=None,
+            accessAll=None,
+            readonly=False,
+            hidepasswords=False,
+            groups=[],
     ):
         """
         emails_or_users: email or Profile to set access to
@@ -2915,24 +2936,24 @@ class Client(object):
         u = f"/api/organizations/{orga.id}/users/invite"
         v, i = self.version()
         if i and (v > API_CHANGES["1.27.0"]):
-            params.setdefault("groups", [])
+            params.setdefault("groups", groups)
         response = self.r(u, json=params, token=token)
         self.assert_bw_response(response)
         return response
 
     def set_organization_access(
-        self,
-        emails_or_users,
-        orga,
-        collections=None,
-        token=None,
-        sync=None,
-        access_level=None,
-        remove=False,
-        permissions=None,
-        accessAll=None,
-        readonly=None,
-        hidepasswords=None,
+            self,
+            emails_or_users,
+            orga,
+            collections=None,
+            token=None,
+            sync=None,
+            access_level=None,
+            remove=False,
+            permissions=None,
+            accessAll=None,
+            readonly=None,
+            hidepasswords=None,
     ):
         """
         Variant to create or update organization at a USER level: manage it's type, and it's collections
@@ -3076,7 +3097,7 @@ class Client(object):
                         if aperm:
                             aperm = aperm[0]
                             if (aperm["readOnly"] == ro) and (
-                                aperm["hidePasswords"] == hp
+                                    aperm["hidePasswords"] == hp
                             ):
                                 log = f"Access In place {email}: collection {collection.name}/{collection.id}"
                             else:
@@ -3103,7 +3124,7 @@ class Client(object):
         return payloads
 
     def compute_accesses(
-        self, dcollections, remove=False, readonly=False, hidepasswords=False
+            self, dcollections, remove=False, readonly=False, hidepasswords=False
     ):
         ret = {"payloads": [], "remove": []}
         for cid, col in (dcollections or {}).items():
@@ -3119,18 +3140,18 @@ class Client(object):
         return ret
 
     def set_collection_access(
-        self,
-        emails_or_users,
-        collections=None,
-        readonly=False,
-        hidepasswords=False,
-        remove=None,
-        orga=None,
-        access_level=None,
-        accessAll=False,
-        permissions=None,
-        token=None,
-        sync=None,
+            self,
+            emails_or_users,
+            collections=None,
+            readonly=False,
+            hidepasswords=False,
+            remove=None,
+            orga=None,
+            access_level=None,
+            accessAll=False,
+            permissions=None,
+            token=None,
+            sync=None,
     ):
         """
         Variant to create or update organization collections access at a COLLECTION level
@@ -3248,7 +3269,7 @@ class Client(object):
                         if aperm:
                             aperm = aperm[0]
                             if (aperm["readOnly"] == ro) and (
-                                aperm["hidePasswords"] == hp
+                                    aperm["hidePasswords"] == hp
                             ):
                                 log = f"Access In place {email}: collection {collection.name}/{collection.id}"
                             else:
@@ -3426,6 +3447,5 @@ def get_emails(emails_or_users):
             i = i.email
         emails.append(i)
     return emails
-
 
 # vim:set et sts=4 ts=4 tw=120:

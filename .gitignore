@@ -12,3 +12,7 @@
 src/.coverage
 /dist
 /.tox
+debug
+.idea
+build
+*.egg-info
