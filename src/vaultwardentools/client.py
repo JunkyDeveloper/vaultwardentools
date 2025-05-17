@@ -3513,23 +3513,49 @@ class Client(object):
         return ret
 
     def get_group(self, group, orga=None, sync=None, token=None):
+        """This method returns one group per id but if multple groups have the same name it returns an OrderedDict"""
         token = self.get_token(token)
         if isinstance(group, Groupdetails):
             if not sync:
                 return group
             else:
+                if orga is None:
+                    exc = OrganizationNotFound(f"No such organization found {orga}")
+                    exc.criteria = [orga]
+                    raise exc
+                orga = self.get_organization(orga, sync=sync, token=token)
                 group = group.id
+                g = BWFactory.construct(self.r(f"/api/organizations/{orga.id}/groups/{group}/details", method="get").json(), client=self, unmarshall=True)
+                self.cache(g)
+                self.cache_group(g, cache_key=orga.id)
+                return g
         _id = self.item_or_id(group)
-        if not sync:
-            try:
-                return self._cache["groups"][SYNC_ALL_ORGAS_ID]["id"][_id]
-            except KeyError:
-                raise GroupNotFound(f"No such group found {group}")
-        orga = self.get_organization(orga)
-        return self.get_groups(orga, sync=sync, token=token)[id][_id]
+        try:
+            return self._cache["groups"][SYNC_ALL_ORGAS_ID]["id"][_id]
+        except KeyError:
+            if orga is None:
+                exc = OrganizationNotFound(f"No such organization found {orga}")
+                exc.criteria = [orga]
+                raise exc
+            orga = self.get_organization(orga)
+            groups = self.get_groups(orga, sync=sync, token=token)
+        try:
+            return groups["id"][_id]
+        except KeyError:
+            pass
+        try:
+            g: OrderedDict = groups["name"][_id]
+            if len(g) == 1:
+                return next(iter(g.values()))
+            return g
+        except KeyError:
+            pass
+        exc = GroupNotFound(f"No such group found {group}")
+        exc.criteria = [group]
+        raise
 
 
-    def delete_group(self, orga, group, token=None):
+    def delete_group(self, group, orga, token=None):
         pass
 
 
