@@ -295,6 +295,9 @@ class OrganizationNotFound(SearchError):
 class GroupNotFound(SearchError):
     """."""
 
+class TooManyGroups(SearchError):
+    """."""
+
 class CollectionNotFound(SearchError):
     """."""
 
@@ -3556,7 +3559,20 @@ class Client(object):
 
 
     def delete_group(self, group, orga, token=None):
-        pass
+        """Deletes only via name if only one group exists with this name"""
+        if isinstance(group, Groupdetails):
+            group = group.id
+        else:
+            group = self.get_group(group, orga, token=token)
+            if isinstance(group, OrderedDict):
+                exc = TooManyGroups(f"To many groups found")
+                exc.criteria = [group]
+                raise exc
+        _id = self.item_or_id(group)
+        orga = self.get_organization(orga, token=token)
+        resp = self.r(f"/api/organizations/{orga.id}/groups/{_id}", method="delete")
+        self.assert_bw_response(resp, expected_status_codes=[200, 500])
+        return resp.status_code == 200
 
 
 def get_emails(emails_or_users):
