@@ -51,7 +51,7 @@ You should also upgrade as soon as possible to version 2.0.0 which may mitigate 
 - Set access at organization, collections and users levels
 - Download/Upload attachments to vault and organizations
 - Integrates a thin wrapper around the official npm CLI (see `call` mathod)
-- Read [api](./src/bitwardentools/client.py) for more details
+- Read [api](src/vaultwardentools/client.py) for more details
 
 ## Install as a python lib
 ```bash

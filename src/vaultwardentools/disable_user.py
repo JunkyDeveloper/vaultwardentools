@@ -6,11 +6,11 @@ import os
 
 import click
 
-import bitwardentools
-from bitwardentools import Client, L
-from bitwardentools import client as bwclient
+import vaultwardentools
+from vaultwardentools import Client, L
+from vaultwardentools import client as bwclient
 
-bitwardentools.setup_logging()
+vaultwardentools.setup_logging()
 PASSWORDS = os.environ.get("BW_PASSWORDS_JSON", "data/passwords.json")
 
 
@@ -25,7 +25,7 @@ def main(
     client.sync()
     try:
         user = client.get_user(email=login)
-        client.delete_user(user=user)
+        client.disable_user(user=user)
     except bwclient.UserNotFoundError:
         pass
 

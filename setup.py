@@ -27,8 +27,8 @@ READMES = [
 ]
 long_description = "\n\n".join([read(a) for a in READMES])
 classifiers = ["Programming Language :: Python", "Topic :: Software Development"]
-name = "bitwardentools"
-version = "2.0.1"
+name = "vaultwardentools"
+version = "2.0.2"
 src_dir = "src"
 req = re.compile("^(?!(-e|#))", flags=re.I | re.M)
 install_requires = [
@@ -52,7 +52,9 @@ setup(
     keywords="",
     author="kiorky",
     author_email="kiorky@cryptelium.net",
-    url="https://github.com/corpusops/bitwardentools",
+    maintainer="junkydeveloper",
+    maintainer_email="junkydeveloper@gmail.com",
+    url="https://github.com/JunkyDeveloper/vaultwardentools",
     long_description_content_type="text/markdown",
     license="GPL",
     packages=find_packages(src_dir),

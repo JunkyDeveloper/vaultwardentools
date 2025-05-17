@@ -6,8 +6,8 @@ import copy
 import os
 import unittest
 
-from bitwardentools import client as bwclient
-from bitwardentools import crypto as bwcrypto
+from vaultwardentools import client as bwclient
+from vaultwardentools import crypto as bwcrypto
 
 ORGA_TEST_ID = os.environ.get("ORGA_TEST_ID", "bitwardentoolstest")
 DSKIP = "daccess|emails|^(i|I)d|userId|(o|O)bject|(c|C)ontinuationToken"

@@ -8,12 +8,12 @@ import secrets
 
 import click
 
-import bitwardentools
-from bitwardentools import MAIL_LANG, Client, L, as_bool
-from bitwardentools import client as bwclient
-from bitwardentools import notify_access
+import vaultwardentools
+from vaultwardentools import MAIL_LANG, Client, L, as_bool
+from vaultwardentools import client as bwclient
+from vaultwardentools import notify_access
 
-bitwardentools.setup_logging()
+vaultwardentools.setup_logging()
 PASSWORDS = os.environ.get("BW_PASSWORDS_JSON", "data/passwords.json")
 
 
@@ -21,7 +21,7 @@ PASSWORDS = os.environ.get("BW_PASSWORDS_JSON", "data/passwords.json")
 @click.option("--login")
 @click.option("--password", default="")
 @click.option("--register-to", default=os.environ.get("BW_ORGAS_REGISTER_TO", ""))
-@click.option("--server", default=bitwardentools.SERVER)
+@click.option("--server", default=vaultwardentools.SERVER)
 @click.option("--mail-lang", default=MAIL_LANG)
 @click.option("--tls", default=os.environ.get("BW_MAIL_TLS", "1"))
 @click.option("--dry-run", default=os.environ.get("BW_DRYRUN", "1"))

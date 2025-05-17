@@ -12,10 +12,10 @@ from vaultcli.auth import Auth
 from vaultcli.client import Client
 from vaultcli.main import write_binary_file, write_json_file
 
-import bitwardentools
-from bitwardentools import CFG, EXPORT_DIR, L, as_bool
+import vaultwardentools
+from vaultwardentools import CFG, EXPORT_DIR, L, as_bool
 
-bitwardentools.setup_logging()
+vaultwardentools.setup_logging()
 
 
 def configure_client(config_file=CFG):

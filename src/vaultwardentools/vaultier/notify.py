@@ -7,16 +7,16 @@ import os
 
 import click
 
-import bitwardentools
-from bitwardentools import MAIL_LANG, L, as_bool, notify_access
-from bitwardentools.vaultier import PASSWORDS
+import vaultwardentools
+from vaultwardentools import MAIL_LANG, L, as_bool, notify_access
+from vaultwardentools.vaultier import PASSWORDS
 
-bitwardentools.setup_logging()
+vaultwardentools.setup_logging()
 JSON = os.environ.get("VAULTIER_JSON", "data/export/vaultier.json")
 
 
 @click.command()
-@click.option("--server", default=bitwardentools.SERVER)
+@click.option("--server", default=vaultwardentools.SERVER)
 @click.argument("passwordsf", default=PASSWORDS)
 @click.option("--mail-lang", default=MAIL_LANG)
 @click.option("--tls", default=os.environ.get("BW_MAIL_TLS", "1"))

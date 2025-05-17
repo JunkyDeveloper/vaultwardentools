@@ -11,11 +11,11 @@ from multiprocessing import Pool
 
 import click
 
-import bitwardentools as bwclient
-from bitwardentools import Client, L, as_bool
-from bitwardentools import crypto as bwcrypto
-from bitwardentools import sanitize
-from bitwardentools.vaultier import PASSWORDS
+import vaultwardentools as bwclient
+from vaultwardentools import Client, L, as_bool
+from vaultwardentools import crypto as bwcrypto
+from vaultwardentools import sanitize
+from vaultwardentools.vaultier import PASSWORDS
 
 bwclient.setup_logging()
 JSON = os.environ.get("VAULTIER_JSON", "data/export/vaultier.json")

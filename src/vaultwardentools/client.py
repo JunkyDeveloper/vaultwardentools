@@ -23,19 +23,22 @@ import requests
 from jwt import encode as jwt_encode
 from packaging import version as _version
 
-from bitwardentools import crypto as bwcrypto
-from bitwardentools.common import L, caseinsentive_key_search
+from vaultwardentools import crypto as bwcrypto
+from vaultwardentools.common import L, caseinsentive_key_search
+
 
 LOGIN_ENDPOINT_RE = re.compile("connect/token")
 VAULTIER_FIELD_ID = "vaultiersecretid"
 DEFAULT_CACHE = {"id": {}, "name": {}, "sync": False}
 SYNC_ALL_ORGAS_ID = "__orga__all__ORGAS__"
 SYNC_ORGA_ID = "__orga__{0}"
+SYNC_ALL_GROUPS_ID = "all"
 SECRET_CACHE = {"id": {}, "name": {}, "vaultiersecretid": {}, "sync": []}
 DEFAULT_BITWARDEN_CACHE = {
     "sync_token": {},
     "sync": {},
     "templates": {},
+    "groups": {"sync": False, SYNC_ALL_GROUPS_ID:deepcopy(DEFAULT_CACHE)},
     "users": deepcopy(DEFAULT_CACHE),
     "organizations": deepcopy(DEFAULT_CACHE),
     "collections": {"sync": False, SYNC_ALL_ORGAS_ID: deepcopy(DEFAULT_CACHE)},
@@ -289,6 +292,8 @@ class SearchError(BitwardenError):
 class OrganizationNotFound(SearchError):
     """."""
 
+class GroupNotFound(SearchError):
+    """."""
 
 class CollectionNotFound(SearchError):
     """."""
@@ -638,8 +643,22 @@ class Organization(BWFactory):
         self._complete = False
         return ret
 
+
 class Organizationuseruserdetails(BWFactory):
     """."""
+
+
+class Groupdetails(BWFactory):
+    """."""
+
+    def load_single(self, jsond=None):
+        super(Groupdetails, self).load(jsond)
+        if jsond:
+            for i, val in jsond.items():
+                if i.lower() in ["object"]:
+                    val = uncapitzalize(val)
+                setattr(self, i, val)
+
 
 class Cipher(BWFactory):
     """."""
@@ -1167,6 +1186,18 @@ class Client(object):
             self.cache(orga)
         return orga
 
+    def finish_group(self, orga, group, cache=None, token=None):
+        token = self.get_token(token)
+        self.invalidate_other_user_cache(token=token)
+        orga = BWFactory.construct(
+            self.r(f"/api/organizations/{orga.id}/groups/{group.id}", method="get").json(),
+            client=self,
+            unmarshall=True,
+        )
+        orga._complete = True
+        self.cache(orga)
+        return orga
+
     def get_organizations(self, sync=None, cache=None, token=None):
         token = self.get_token(token)
         self.invalidate_other_user_cache(token=token)
@@ -1318,6 +1349,9 @@ class Client(object):
     def cache_organization(self, r, **kw):
         return self._cache_objects(r, "organizations")
 
+    def cache_group(self, r,cache_key=SYNC_ALL_GROUPS_ID, **kw):
+        return self._cache_objects(r, cache=self._cache["groups"], cache_key=cache_key, uniques=["id"], **kw)
+
     def cache_collection(self, r, cache_key=SYNC_ALL_ORGAS_ID, **kw):
         return self._cache_objects(
             r, cache=self._cache["collections"], cache_key=cache_key, **kw
@@ -1353,6 +1387,8 @@ class Client(object):
                 cache_method = self.cache_organization
             elif isinstance(i, Item):
                 cache_method = self.cache_cipher
+            elif isinstance(i, Groupdetails):
+                cache_method = self.cache_group
             else:
                 cache_method = None
             if cache_method:
@@ -3436,6 +3472,65 @@ class Client(object):
             raise exc
         L.info(f"Confirmed user {email} / {user_id} in orga {orga.name} / {orga.id}")
         return acl
+
+    def create_group(self, orga, group, users=[], collections=[], token=None):
+        token = self.get_token(token=token)
+        orga = self.get_organization(orga, token=token)
+        data = {
+            "collections": collections,
+            "name": group,
+            "users": users
+        }
+        log = f'Creating group {data["name"]}/'
+
+        resp = self.r(f"/api/organizations/{orga.id}/groups", json=data, method="get")
+        self.assert_bw_response(resp)
+        d = Groupdetails(resp.json())
+        d.load_single()
+        return d
+
+    def get_groups(self, orga, sync=None, cache=None, token=None):
+        token = self.get_token(token=token)
+        orga = self.get_organization(orga, token=token)
+        _CACHE = self._cache["groups"]
+        if sync is None:
+            sync = False
+        if cache is None:
+            cache = True
+        if cache is False or sync:
+            _CACHE["sync"] = False
+            _CACHE.pop(orga.id, None)
+            _CACHE.pop(SYNC_ALL_ORGAS_ID, None)
+        try:
+            return _CACHE[orga.id]
+        except KeyError:
+            pass
+        for group in self.r(f"/api/organizations/{orga.id}/groups/details", method="get").json()["data"]:
+            g = BWFactory.construct(group, client=self, unmarshall=True)
+            self.cache(g)
+            self.cache_group(g, cache_key=orga.id)
+        ret = self.cache_group([], cache_key=orga.id)
+        return ret
+
+    def get_group(self, group, orga=None, sync=None, token=None):
+        token = self.get_token(token)
+        if isinstance(group, Groupdetails):
+            if not sync:
+                return group
+            else:
+                group = group.id
+        _id = self.item_or_id(group)
+        if not sync:
+            try:
+                return self._cache["groups"][SYNC_ALL_ORGAS_ID]["id"][_id]
+            except KeyError:
+                raise GroupNotFound(f"No such group found {group}")
+        orga = self.get_organization(orga)
+        return self.get_groups(orga, sync=sync, token=token)[id][_id]
+
+
+    def delete_group(self, orga, group, token=None):
+        pass
 
 
 def get_emails(emails_or_users):
