@@ -1,11 +1,12 @@
 # Tools for working with vaultwarden/bitwarden (_rs) and vaultier
 
+# This packagename was former bitwardentools! See DISCLAIMER
 
 This package containers a python3+ client for bitwarden which uses both a native python implementation but also wraps the official npm `@bitwarden/cli`.
 
 The ultimate goal is certainly only to rely on python implementation against the vaultwarden/bitwarden_rs server implementation.
 
-- [![.github/workflows/cicd.yml](https://github.com/junkydeveloper/vaultwardentools/actions/workflows/cicd.yml/badge.svg?branch=main)](https://github.com/corpusops/bitwardentools/actions/workflows/cicd.yml)
+- [![.github/workflows/cicd.yml](https://github.com/junkydeveloper/vaultwardentools/actions/workflows/cicd.yml/badge.svg?branch=main)](https://github.com/junkydeveloper/vaultwardentools/actions/workflows/cicd.yml)
 
 ## DISCLAIMER
 This library will get some updates only to bring groups working. If you find issues please report but no garantee it will be solved.
@@ -16,11 +17,11 @@ The new maintainer is using only vaultwarden and no bitwarden, so all source cod
 ## SECURITY CONSIDERATIONS
 This library was made as a swiss-army knife, but it still a proof of concept and as such, for obvious security reasons, should not be trusted blindly even if it already appears to work pretty well.
 Indeed, as the maintainers, we do not have neither the time, nor the human ressources, nor the funds to continue development and conformity specially on a password related software.
-bitwardentools was designed and more oriented to manage administrative tasks via adhoc scripts around bitwarden. It was with **root/admin** privileges / **all** access in mind.
+vaultwardentools was designed and more oriented to manage administrative tasks via adhoc scripts around bitwarden. It was with **root/admin** privileges / **all** access in mind.
 
 We would at least ask you to be careful, or even discourage to use it for example in a multi-user context
 Specially if the users are not trusted, and the API is used on long running proccess like WEB APIS.
-Or, you'll have to take the responsability of this usage and as already said on https://github.com/corpusops/bitwardentools/blob/main/USAGE.md#security-note , you should at least really take A SPECIAL++ care in the lifecycle of your consuming application to ensure that `Client.bust_cache()` is called between each different user call if this is not desired (and/or controlled), or any other cache invalidation routine will be done to ensure no leak to be possible. Also, please note that bitwardentools's cache is more a local object registry that a requests cache.
+Or, you'll have to take the responsability of this usage and as already said on https://github.com/junkydeveloper/vaultwardentools/blob/main/USAGE.md#security-note , you should at least really take A SPECIAL++ care in the lifecycle of your consuming application to ensure that `Client.bust_cache()` is called between each different user call if this is not desired (and/or controlled), or any other cache invalidation routine will be done to ensure no leak to be possible. Also, please note that vaultwardentools's cache is more a local object registry that a requests cache.
 This means that misusing the library can lead to leaks where an already preloaded cache can be exploited by rogue users, so think twice to your scenarii to ensure what would one user have access with or without the cache loaded.
 
 You should also upgrade as soon as possible to version 2.0.0 which may mitigate but not totally the situation as we can't by definition control the code consuming this library and any mis-usage, specially concerning cache invalidation calls. If you used this software in adhoc scripts, so in mono user and controlled scenarii, you still are I think still safe.
@@ -35,8 +36,9 @@ You should also upgrade as soon as possible to version 2.0.0 which may mitigate 
 - Read [api](src/vaultwardentools/client.py) for more details
 
 ## Install as a python lib
+Currently not possible working on this
 ```bash
-pip install bitwardentools
+pip install vaultwardentools
 ```
 
 ## Run in dev
