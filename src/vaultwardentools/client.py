@@ -281,6 +281,8 @@ class UnimplementedError(BitwardenError):
 class DecryptError(bwcrypto.DecryptError):
     """."""
 
+class WrongVersionOfServer(BitwardenError):
+    """."""
 
 class SearchError(BitwardenError):
     """."""
@@ -2423,7 +2425,7 @@ class Client(object):
     def get_users_from_organization(self, orga, include_groups=False, token=None):
         token = self.get_token(token)
         orga = self.get_organization(orga, token=token)
-        res = self.r(f"/api/organizations/{orga.id}/users" + "?includeGroups=true" if include_groups else "",
+        res = self.r(f"/api/organizations/{orga.id}/users" + ("?includeGroups=true" if include_groups else ""),
                      method="get")
         users = {}
         for user in res.json()["data"]:
@@ -2922,6 +2924,7 @@ class Client(object):
             permissions=None,
             accessAll=None,
             readonly=False,
+            manage=False,
             hidepasswords=False,
             groups=[],
     ):
@@ -2974,12 +2977,12 @@ class Client(object):
                 collections, orga=orga, token=token
             )
             params["collections"] = self.compute_accesses(
-                dcollections, readonly=readonly, hidepasswords=hidepasswords
+                dcollections, readonly=readonly, hidepasswords=hidepasswords,manage=manage
             )["payloads"]
         u = f"/api/organizations/{orga.id}/users/invite"
         v, i = self.version()
         if i and (v > API_CHANGES["1.27.0"]):
-            params.setdefault("groups", groups)
+            params.setdefault("groups", get_ids(groups))
         response = self.r(u, json=params, token=token)
         self.assert_bw_response(response)
         return response
@@ -3167,17 +3170,18 @@ class Client(object):
         return payloads
 
     def compute_accesses(
-            self, dcollections, remove=False, readonly=False, hidepasswords=False
+            self, dcollections, remove=False, readonly=False, hidepasswords=False,manage=False
     ):
         ret = {"payloads": [], "remove": []}
         for cid, col in (dcollections or {}).items():
-            remove = col.get("remove", False)
+            remove = col.get("remove", remove)
             k = remove and "remove" or "payloads"
             ret[k].append(
                 {
                     "id": col["collection"].id,
                     "hidePasswords": bool(col.get("hidepasswords", hidepasswords)),
                     "readOnly": bool(col.get("readOnly", readonly)),
+                    "manage": bool(col.get("manage", manage)),
                 }
             )
         return ret
@@ -3481,6 +3485,9 @@ class Client(object):
         return acl
 
     def create_group(self, orga, group, users=[], collections=[], token=None):
+        v, i = self.version()
+        if i and (v < API_CHANGES["1.27.0"]):
+            raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
         token = self.get_token(token=token)
         orga = self.get_organization(orga, token=token)
         data = {
@@ -3497,6 +3504,9 @@ class Client(object):
         return d
 
     def get_groups(self, orga, sync=None, cache=None, token=None):
+        v, i = self.version()
+        if i and (v < API_CHANGES["1.27.0"]):
+            raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
         token = self.get_token(token=token)
         orga = self.get_organization(orga, token=token)
         _CACHE = self._cache["groups"]
@@ -3521,6 +3531,9 @@ class Client(object):
 
     def get_group(self, group, orga=None, sync=None, token=None):
         """This method returns one group per id but if multple groups have the same name it returns an OrderedDict"""
+        v, i = self.version()
+        if i and (v < API_CHANGES["1.27.0"]):
+            raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
         token = self.get_token(token)
         if isinstance(group, Groupdetails):
             if not sync:
@@ -3568,6 +3581,10 @@ class Client(object):
 
     def delete_group(self, group, orga, token=None):
         """Deletes only via name if only one group exists with this name"""
+        v, i = self.version()
+        if i and (v < API_CHANGES["1.27.0"]):
+            raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
+        token = self.get_token(token)
         if isinstance(group, Groupdetails):
             group = group.id
         else:
@@ -3583,6 +3600,10 @@ class Client(object):
         return resp.status_code == 200
 
     def get_users_from_group(self, group, orga=None, sync=None, token=None):
+        v, i = self.version()
+        if i and (v < API_CHANGES["1.27.0"]):
+            raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
+        token = self.get_token(token)
         group = self.get_group(group, orga, sync=sync, token=token)
         if isinstance(group, OrderedDict):
             exc = TooManyGroups(f"To many groups found")
@@ -3599,8 +3620,41 @@ class Client(object):
             users[user_id] = deepcopy(users_org[user_id])
         return users
 
-    def edit_group(self, group, users, collections, sync=None, token=None):
-        pass
+    def edit_group(self,
+                   group,
+                   orga = None,
+                   users = None,
+                   collections = None,
+                   readonly=False,
+                   hidepasswords=False,
+                   manage=False,
+                   sync=None, token=None):
+        v, i = self.version()
+        if i and (v < API_CHANGES["1.27.0"]):
+            raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
+        token = self.get_token(token)
+        group = self.get_group(group, orga, sync=sync, token=token)
+        if isinstance(group, OrderedDict):
+            exc = TooManyGroups(f"To many groups found")
+            exc.criteria = [group]
+            raise exc
+        _id = self.item_or_id(group)
+        payload = {
+            "users": get_ids(users),
+            "name": group.name,
+            "collections": [],
+        }
+        if collections:
+            orga = self.get_organization(group.organizationId, token=token, sync=sync)
+            dcollections = self.collections_to_payloads(
+                collections, orga=orga, token=token
+            )
+            payload["collections"] = self.compute_accesses(
+                dcollections, readonly=readonly, hidepasswords=hidepasswords, manage=manage
+            )["payloads"]
+        resp = self.r(f"/api/organizations/{group.organizationId}/groups/{_id}", json=payload, method="put", token=token)
+        self.assert_bw_response(resp, expected_status_codes=[200, 500])
+        return resp
 
 
 def get_emails(emails_or_users):
@@ -3612,5 +3666,15 @@ def get_emails(emails_or_users):
             i = i.email
         emails.append(i)
     return emails
+
+
+def get_ids(groups_or_collections):
+    ids = []
+    if not isinstance(groups_or_collections, list):
+        groups_or_collections = [groups_or_collections]
+    for i in groups_or_collections:
+        if isinstance(i, BWFactory):
+            ids.append(i.id)
+    return list(set(ids))
 
 # vim:set et sts=4 ts=4 tw=120:
