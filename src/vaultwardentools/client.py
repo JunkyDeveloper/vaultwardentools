@@ -2420,16 +2420,14 @@ class Client(object):
         exc.criteria = criteria
         raise exc
 
-    def get_users_from_organization(self, orga, token=None):
+    def get_users_from_organization(self, orga, include_groups=False, token=None):
         token = self.get_token(token)
         orga = self.get_organization(orga, token=token)
-        res = self.r(f"/api/organizations/{orga.id}/users", method="get")
+        res = self.r(f"/api/organizations/{orga.id}/users" + "?includeGroups=true" if include_groups else "",
+                     method="get")
         users = {}
         for user in res.json()["data"]:
-            users[user["id"]] = BWFactory.construct(user,
-                                             client=self,
-                                             unmarshall=True,
-                                             )
+            users[user["id"]] = BWFactory.construct(user, client=self, unmarshall=True, )
         return users
 
     def assert_bw_response(
