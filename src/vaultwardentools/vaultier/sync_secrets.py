@@ -11,8 +11,8 @@ from multiprocessing import Pool
 
 import click
 
-import bitwardentools
-from bitwardentools import (
+import vaultwardentools
+from vaultwardentools import (
     EXPORT_DIR,
     VAULTIER_SECRET,
     Client,
@@ -22,9 +22,9 @@ from bitwardentools import (
     as_bool,
     sanitize,
 )
-from bitwardentools.vaultier import AS_SINGLE_ORG
+from vaultwardentools.vaultier import AS_SINGLE_ORG
 
-bitwardentools.setup_logging()
+vaultwardentools.setup_logging()
 JSON = os.environ.get("VAULTIER_JSON", "data/export/vaultier.json")
 BW_ORGA_NAME = os.environ.get("BW_ORGA_NAME", "bitwarden")
 DONE = {"contructed": OrderedDict(), "errors": OrderedDict()}
@@ -123,9 +123,9 @@ def record(client, cipherd):
 
 @click.command()
 @click.argument("jsonf", default=JSON)
-@click.option("--server", default=bitwardentools.SERVER)
-@click.option("--email", default=bitwardentools.EMAIL)
-@click.option("--password", default=bitwardentools.PASSWORD)
+@click.option("--server", default=vaultwardentools.SERVER)
+@click.option("--email", default=vaultwardentools.EMAIL)
+@click.option("--password", default=vaultwardentools.PASSWORD)
 @click.option("--assingleorg", " /-S", default=AS_SINGLE_ORG, is_flag=True)
 def main(jsonf, server, email, password, assingleorg):
     L.info("start")
