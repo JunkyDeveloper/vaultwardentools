@@ -1,6 +1,6 @@
 # Tools for working with vaultwarden/bitwarden (_rs) and vaultier
 
-# This packagename was former bitwardentools! See DISCLAIMER
+# This packagename was knows as bitwardentools! See DISCLAIMER
 
 This package containers a python3+ client for bitwarden which uses both a native python implementation but also wraps the official npm `@bitwarden/cli`.
 
