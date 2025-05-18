@@ -26,7 +26,6 @@ from packaging import version as _version
 from vaultwardentools import crypto as bwcrypto
 from vaultwardentools.common import L, caseinsentive_key_search
 
-
 LOGIN_ENDPOINT_RE = re.compile("connect/token")
 VAULTIER_FIELD_ID = "vaultiersecretid"
 DEFAULT_CACHE = {"id": {}, "name": {}, "sync": False}
@@ -38,7 +37,7 @@ DEFAULT_BITWARDEN_CACHE = {
     "sync_token": {},
     "sync": {},
     "templates": {},
-    "groups": {"sync": False, SYNC_ALL_GROUPS_ID:deepcopy(DEFAULT_CACHE)},
+    "groups": {"sync": False, SYNC_ALL_GROUPS_ID: deepcopy(DEFAULT_CACHE)},
     "users": deepcopy(DEFAULT_CACHE),
     "organizations": deepcopy(DEFAULT_CACHE),
     "collections": {"sync": False, SYNC_ALL_ORGAS_ID: deepcopy(DEFAULT_CACHE)},
@@ -292,11 +291,14 @@ class SearchError(BitwardenError):
 class OrganizationNotFound(SearchError):
     """."""
 
+
 class GroupNotFound(SearchError):
     """."""
 
+
 class TooManyGroups(SearchError):
     """."""
+
 
 class CollectionNotFound(SearchError):
     """."""
@@ -661,6 +663,10 @@ class Groupdetails(BWFactory):
                 if i.lower() in ["object"]:
                     val = uncapitzalize(val)
                 setattr(self, i, val)
+
+
+class Organizationuseruserminidetails(BWFactory):
+    """."""
 
 
 class Cipher(BWFactory):
@@ -1352,7 +1358,7 @@ class Client(object):
     def cache_organization(self, r, **kw):
         return self._cache_objects(r, "organizations")
 
-    def cache_group(self, r,cache_key=SYNC_ALL_GROUPS_ID, **kw):
+    def cache_group(self, r, cache_key=SYNC_ALL_GROUPS_ID, **kw):
         return self._cache_objects(r, cache=self._cache["groups"], cache_key=cache_key, uniques=["id"], **kw)
 
     def cache_collection(self, r, cache_key=SYNC_ALL_ORGAS_ID, **kw):
@@ -2418,12 +2424,12 @@ class Client(object):
         token = self.get_token(token)
         orga = self.get_organization(orga, token=token)
         res = self.r(f"/api/organizations/{orga.id}/users", method="get")
-        users = []
+        users = {}
         for user in res.json()["data"]:
-            users.append(BWFactory.construct(user,
+            users[user["id"]] = BWFactory.construct(user,
                                              client=self,
                                              unmarshall=True,
-                                             ))
+                                             )
         return users
 
     def assert_bw_response(
@@ -3503,7 +3509,7 @@ class Client(object):
         if cache is False or sync:
             _CACHE["sync"] = False
             _CACHE.pop(orga.id, None)
-            _CACHE.pop(SYNC_ALL_ORGAS_ID, None)
+            _CACHE.pop(SYNC_ALL_GROUPS_ID, None)
         try:
             return _CACHE[orga.id]
         except KeyError:
@@ -3522,19 +3528,24 @@ class Client(object):
             if not sync:
                 return group
             else:
-                if orga is None:
-                    exc = OrganizationNotFound(f"No such organization found {orga}")
-                    exc.criteria = [orga]
-                    raise exc
-                orga = self.get_organization(orga, sync=sync, token=token)
                 group = group.id
-                g = BWFactory.construct(self.r(f"/api/organizations/{orga.id}/groups/{group}/details", method="get").json(), client=self, unmarshall=True)
+                g = BWFactory.construct(
+                    self.r(f"/api/organizations/{group.organizationId}/groups/{group}/details", method="get").json(),
+                    client=self,
+                    unmarshall=True)
                 self.cache(g)
-                self.cache_group(g, cache_key=orga.id)
+                self.cache_group(g, cache_key=group.organizationId)
                 return g
         _id = self.item_or_id(group)
         try:
-            return self._cache["groups"][SYNC_ALL_ORGAS_ID]["id"][_id]
+            return self._cache["groups"][SYNC_ALL_GROUPS_ID]["id"][_id]
+        except KeyError:
+            pass
+        try:
+            g: OrderedDict = self._cache["groups"][SYNC_ALL_GROUPS_ID]["name"][_id]
+            if len(g) == 1:
+                return next(iter(g.values()))
+            return g
         except KeyError:
             if orga is None:
                 exc = OrganizationNotFound(f"No such organization found {orga}")
@@ -3557,7 +3568,6 @@ class Client(object):
         exc.criteria = [group]
         raise
 
-
     def delete_group(self, group, orga, token=None):
         """Deletes only via name if only one group exists with this name"""
         if isinstance(group, Groupdetails):
@@ -3573,6 +3583,26 @@ class Client(object):
         resp = self.r(f"/api/organizations/{orga.id}/groups/{_id}", method="delete")
         self.assert_bw_response(resp, expected_status_codes=[200, 500])
         return resp.status_code == 200
+
+    def get_users_from_group(self, group, orga=None, sync=None, token=None):
+        group = self.get_group(group, orga, sync=sync, token=token)
+        if isinstance(group, OrderedDict):
+            exc = TooManyGroups(f"To many groups found")
+            exc.criteria = [group]
+            raise exc
+        _id = self.item_or_id(group)
+        resp = self.r(f"/api/organizations/{group.organizationId}/groups/{_id}/users", method="get")
+        self.assert_bw_response(resp, expected_status_codes=[200, 500])
+        users = {}
+        if orga is None:
+            orga = self.get_organization(group.organizationId, token=token)
+        users_org = self.get_users_from_organization(orga, token=token)
+        for user_id in resp.json():
+            users[user_id] = deepcopy(users_org[user_id])
+        return users
+
+    def edit_group(self, group, users, collections, sync=None, token=None):
+        pass
 
 
 def get_emails(emails_or_users):
