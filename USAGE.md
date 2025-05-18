@@ -130,25 +130,37 @@ acl = client.accept_invitation('foo@bar.com', orga)  # need bitwarden server pri
 acl = client.confirm_invitation('foo@bar.com', orga)  # need bitwarden server private key
 # you can also manage collection permissions
 ## add user to orga
-c.add_user_to_organization(user, orga, collections=col)
+client.add_user_to_organization(user, orga, collections=col)
 ## set them at orga level (will add to orga if not already member)
-c.set_organization_access(user, orga, collections=col, hidepasswords=False, readOnly=True/False)
-c.set_organization_access(user, orga, {"collection": col, "hidePasswords": False}, hidepasswords=True)
+client.set_organization_access(user, orga, collections=col, hidepasswords=False, readOnly=True/False)
+client.set_organization_access(user, orga, {"collection": col, "hidePasswords": False}, hidepasswords=True)
 ## add them at collection level
-c.set_collection_access(user, col, hidepasswords=True/False, readOnly=True/False)
+client.set_collection_access(user, col, hidepasswords=True/False, readOnly=True/False)
 ## remove from collection: col
-c.set_organization_access(user, orga, {"collection": col, "remove": True})
+client.set_organization_access(user, orga, {"collection": col, "remove": True})
 ### or
-c.set_collection_access(user, {"collection": col, "remove": True})
+client.set_collection_access(user, {"collection": col, "remove": True})
 ## get acls infos
-c.get_accesses(orga)
-c.get_accesses(col)
-c.get_accesses({"user": user, "collection": col})
-c.get_accesses({"user": user, "orga": orga})
+client.get_accesses(orga)
+client.get_accesses(col)
+client.get_accesses({"user": user, "collection": col})
+client.get_accesses({"user": user, "orga": orga})
 ## remove from collection
-c.remove_user_from_collection(userOrEmail, colc)
+client.remove_user_from_collection(userOrEmail, colc)
 ## remove from orga
-c.remove_user_from_organization(userOrEmail, orga)
+client.remove_user_from_organization(userOrEmail, orga)
+token = client.get_token()
+orga = client.get_organization("test", token=token)
+print(client.get_groups(orga, token=token))
+print(client.get_group("argsafd", orga, token=token))
+print(client.delete_group("d66f5122-3f64-46ae-bb4f-b5948e485e9f", orga, token=token))
+print(client.get_users_from_organization(orga, token=token))
+users = vaultwardentools.utils.get_organisation_users_via_mails(orga, mails=["test@test.de", "test2@test.de"], client=client)
+collections = client.get_collections(orga, token=token)
+print(client.edit_group("argsafd", orga, users=users, collections=list(collections["id"].values()), readonly=False, manage=True, token=token))
+print(client.get_users_from_group("argsafd",token=token))
+print(client.create_group(orga, "agsdasdfsadffsd", token=token))
+## groups
 ```
 
 ### Manipulating the login data structure via callback (2Factor)
