@@ -1,5 +1,9 @@
 ## CHANGES
 
+### 2.0.2
+- New maintainer started to work on this project
+- Added group support
+
 ### 2.0.1
 - **Remember that bitwardentools development, and so support is now halted.**
 - Fix for adhoc login introduced by the new multiuser flag (major login problem reported by an user). [kiorky]
