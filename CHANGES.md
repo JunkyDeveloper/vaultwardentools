@@ -3,6 +3,7 @@
 ### 2.0.2
 - New maintainer started to work on this project
 - Added group support
+- renamed it from bitwardentools to vaultwardentools
 
 ### 2.0.1
 - **Remember that bitwardentools development, and so support is now halted.**
