@@ -17,7 +17,7 @@ u=${COOKIECUTTER-}
 if [[ -z "$u" ]];then
     u="$HOME/.cookiecutters/cookiecutter-simplecompose"
     if [ ! -e "$u" ];then
-        u="https://github.com/corpusops/$(basename $u).git"
+        u="https://github.com/junkydeveloper/$(basename $u).git"
     else
         cd "$u"
         git fetch origin
@@ -26,26 +26,26 @@ if [[ -z "$u" ]];then
 fi
 if [ -e "$out" ];then vv rm -rf "$out";fi
 vv cookiecutter --no-input -o "$out" -f "$u" \
-    name="bitwardentools" \
-    git_ns="corpusops" \
-    lname="bitwardentools" \
-    eggname="bitwardentools" \
+    name="vaultwardentools" \
+    git_ns="junkydeveloper" \
+    lname="vaultwardentools" \
+    eggname="vaultwardentools" \
     infra_domain="example.com" \
-    simple_docker_image="corpusops/bitwardentools" \
+    simple_docker_image="junkydeveloper/vaultwardentools" \
     py_ver="3.8" \
     with_node="y" \
     node_version="lts/*" \
     git_server="github.com" \
     git_project_server="github.com" \
-    git_project="bitwardentools" \
+    git_project="vaultwardentools" \
     git_scheme="https" \
     git_user="" \
-    git_project_url="https://github.com/corpusops/bitwardentools" \
+    git_project_url="https://github.com/junkydeveloper/vaultwardentools" \
     out_dir="." \
     docker_registry="" \
     app_type="simplecompose" \
     ck_type="simplecompose" \
-    docker_image="corpusops/bitwardentools" \
+    docker_image="junkydeveloper/vaultwardentools" \
     base_image="corpusops/ubuntu-bare:20.04" \
      "$@"
 
