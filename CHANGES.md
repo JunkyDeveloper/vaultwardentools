@@ -7,31 +7,31 @@
 
 ### 2.0.1
 - **Remember that bitwardentools development, and so support is now halted.**
-- Fix for adhoc login introduced by the new multiuser flag (major login problem reported by an user). [kiorky]
+- Fix for adhoc login introduced by the new multiuser flag (major login problem reported by an user). 
 
 ### 2.0.0
 - support for vaultwarden 1.31+
 - Improve cache handling in context on multi users (SEE DISCLAIMER)
 
 ### 1.0.57
-- QA & CI/CD fixes [kiorky]
-- Fix newer vaultwarden patch [kiorky]
-- Fix newer vaultwarden adduser [kiorky]
-- Fix new vaultwarden create_orga [kiorky]
-- Fix newer vaultwarden set_org_acces [kiorky]
+- QA & CI/CD fixes 
+- Fix newer vaultwarden patch 
+- Fix newer vaultwarden adduser 
+- Fix new vaultwarden create_orga 
+- Fix newer vaultwarden set_org_acces 
 
 ### 1.0.56
 - Customizable auth payload support (2Factor, api auth) [Markus Kötter <koetter@cispa.de>])
 
 ### 1.0.55
-- ensure requests is in requirements [kiorky]
+- ensure requests is in requirements 
 
 ### 1.0.54
 - bugfix: exclude folderId from getting encrypted [Thomas Kriechbaumer <thomas@kriechbaumer.name>]
 
 ### 1.0.53
-- kdfIterations payload change fix [kiorky]
-- add delete_user [kiorky]
+- kdfIterations payload change fix 
+- add delete_user 
 
 ### 1.0.51
 - Do not need private key for confirming users
