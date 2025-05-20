@@ -12,7 +12,7 @@ env:
   NO_SQUASH: ""
   NONINTERACTIVE: "1"
   FORCE_ONLINE: "1"
-  RELEASABLE_REPOS: "^corpusops/"
+  RELEASABLE_REPOS: "^junkydeveloper/"
   RELEASABLE_BRANCHES: "^refs/tags"
   TWINE_USERNAME: ${{ secrets.PYPI_USERNAME || '__token__' }}
   TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD || '' }}
