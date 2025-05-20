@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.3
-FROM corpusops/ubuntu-bare:24.04
+FROM ubuntu:24.04
 WORKDIR /tmp/install
 ARG DEV_DEPENDENCIES_PATTERN='^#\s*dev dependencies' \
     PY_VER=3.8 \
