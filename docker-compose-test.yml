@@ -5,7 +5,7 @@ x-bases:
     environment:
       ADMIN_TOKEN: supersecret
       BITWARDEN_BACKUP_IMAGE: corpusops/dbsmartbackup:postgres-13
-      BITWARDEN_DB_IMAGE: corpusops/postgres:13
+      BITWARDEN_DB_IMAGE: postgres:17
       BITWARDEN_DOMAIN: bitwarden
       DATABASE_URL: postgresql://db:db@db/db
       BITWARDEN_IMAGE: vaultwarden/server:1.32.6
@@ -91,14 +91,15 @@ services:
       && echo "$${MAILCATCHER_USER:-mailcatcher}:$$pw" > $$MH_AUTH_FILE && su mailhog
       -p -c MailHog'
     hostname: mailcatcher
-    image: corpusops/mailhog
+#    image: corpusops/mailhog
+    image: mailhog/mailhog
     networks: {bitwarden_net: {ipv4_address: "${BITWARDEN_NETWORK:-172.38.0}.12"}}
     user: root
     volumes:
     - mails:/mails:rw
   bitwarden:
     <<: [ *base ]
-    image: ${BITWARDEN_IMAGE:-vaultwarden/server:1.32.6}
+    image: ${BITWARDEN_IMAGE:-vaultwarden/server:1.33.2}
     hostname: bitwarden
     depends_on: [db, setup, mailcatcher]
     entrypoint:
