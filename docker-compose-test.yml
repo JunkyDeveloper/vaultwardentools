@@ -8,7 +8,7 @@ x-bases:
       BITWARDEN_DB_IMAGE: postgres:17
       BITWARDEN_DOMAIN: bitwarden
       DATABASE_URL: postgresql://db:db@db/db
-      BITWARDEN_IMAGE: vaultwarden/server:1.32.6
+      BITWARDEN_IMAGE: vaultwarden/server:1.33.2
       DATA_FOLDER: /data
       DISABLE_ADMIN_TOKEN: "true"
       DOMAIN: http://bitwarden
