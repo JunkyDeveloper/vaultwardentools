@@ -2516,21 +2516,21 @@ class Client(object):
 
     def enable_user(self, email=None, name=None, id=None, user=None):
         user = self.get_user(email=email, name=name, id=id, user=user)
-        resp = self.adminr(f"/users/{user.id}/enable")
+        resp = self.adminr(f"/users/{user.id}/enable", headers={"Content-Type":"application/json"})
         self.post_user_request(resp)
         L.info(f"Enabled user {user.email} / {user.name} / {user.id}")
         return resp
 
     def disable_user(self, email=None, name=None, id=None, user=None):
         user = self.get_user(email=email, name=name, id=id, user=user)
-        resp = self.adminr(f"/users/{user.id}/disable")
+        resp = self.adminr(f"/users/{user.id}/disable", headers={"Content-Type":"application/json"})
         self.post_user_request(resp)
         L.info(f"Disabled user {user.email} / {user.name} / {user.id}")
         return resp
 
     def delete_user(self, email=None, name=None, id=None, user=None, sync=True, **kw):
         user = self.get_user(email=email, name=name, id=id, user=user, sync=sync)
-        resp = self.adminr(f"/users/{user.id}/delete")
+        resp = self.adminr(f"/users/{user.id}/delete", headers={"Content-Type":"application/json"})
         self.post_user_request(resp)
         self.uncache(obj=user, **kw)
         L.info(f"Deleted user {user.email} / {user.name} / {user.id}")
