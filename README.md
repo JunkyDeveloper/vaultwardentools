@@ -26,6 +26,13 @@ This means that misusing the library can lead to leaks where an already preloade
 
 You should also upgrade as soon as possible to version 2.0.0 which may mitigate but not totally the situation as we can't by definition control the code consuming this library and any mis-usage, specially concerning cache invalidation calls. If you used this software in adhoc scripts, so in mono user and controlled scenarii, you still are I think still safe.
 
+## Rationale
+
+I took inspiration from [python-vaultwarden](https://github.com/numberly/python-vaultwarden) to bring the vaultwarden admin site also in this package working.
+So it should now be working with vaultwarden admin and bitwarden admin.
+
+So now this package should be able to give you access to control everything what you want in your bitwarden/vaultwarden instance.
+
 ## Features
 - API controllable client
 - Create, Read, Update, Delete, on organizations, collection, ciphers, users (also disable/enable), and attachments
@@ -34,6 +41,7 @@ You should also upgrade as soon as possible to version 2.0.0 which may mitigate 
 - Download/Upload attachments to vault and organizations
 - Integrates a thin wrapper around the official npm CLI (see `call` mathod)
 - Read [api](src/vaultwardentools/client.py) for more details
+- vaultwarden admin access
 
 ## Install as a python lib
 Currently not possible working on this
