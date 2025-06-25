@@ -19,10 +19,7 @@ from copy import deepcopy
 from subprocess import run
 from time import sleep, time
 
-import httpx
 import requests
-import http
-from http.cookiejar import Cookie
 from jwt import encode as jwt_encode
 from packaging import version as _version
 
