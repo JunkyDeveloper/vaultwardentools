@@ -1981,7 +1981,7 @@ class Client(object):
                 self.assert_bw_response(resp)
                 ciphers = resp.json()
             except ResponseError:
-                raise
+                raise BitwardenError("response error")
             except json.JSONDecodeError:
                 exc = CiphersError("ciphers are not in json")
                 exc.response = resp
@@ -3533,7 +3533,7 @@ class Client(object):
         }
         log = f'Creating group {data["name"]}/'
 
-        resp = self.r(f"/api/organizations/{orga.id}/groups", json=data, method="get")
+        resp = self.r(f"/api/organizations/{orga.id}/groups", json=data, method="post")
         self.assert_bw_response(resp)
         d = Groupdetails(resp.json())
         d.load_single()
@@ -3613,7 +3613,7 @@ class Client(object):
             pass
         exc = GroupNotFound(f"No such group found {group}")
         exc.criteria = [group]
-        raise
+        raise exc
 
     def delete_group(self, group, orga, token=None):
         """Deletes only via name if only one group exists with this name"""
