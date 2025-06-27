@@ -3527,9 +3527,9 @@ class Client(object):
         token = self.get_token(token=token)
         orga = self.get_organization(orga, token=token)
         data = {
-            "collections": collections,
+            "collections": get_ids(collections),
             "name": group,
-            "users": users
+            "users": get_ids(users)
         }
         log = f'Creating group {data["name"]}/'
 
