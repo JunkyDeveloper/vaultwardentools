@@ -2485,15 +2485,20 @@ class Client(object):
         exc.criteria = criteria
         raise exc
 
-    def get_users_from_organization(self, orga, include_groups=False, token=None):
+    def get_users_from_organization(self, orga, include_groups=False,sync = False, token=None):
         token = self.get_token(token)
         orga = self.get_organization(orga, token=token)
         res = self.r(f"/api/organizations/{orga.id}/users" + ("?includeGroups=true" if include_groups else ""),
                      method="get")
-        users = {}
+        users = {"id":{}, "email":{}}
         for user in res.json()["data"]:
-            users[user["id"]] = BWFactory.construct(user, client=self, unmarshall=True, )
+            profile = BWFactory.construct(user, client=self, unmarshall=True, )
+            users["id"][user["id"]] = user
+            users["email"][user["email"]] = user
         return users
+
+    def get_user_from_organization(self, orga, email, sync=False, token=None):
+        return self.get_users_from_organization(orga, include_groups=False, sync=sync, token=token)["email"][email]
 
     def assert_bw_response(
             self, response, expected_status_codes=None, expected_callback=None, *a, **kw
@@ -2540,21 +2545,21 @@ class Client(object):
 
     def enable_user(self, email=None, name=None, id=None, user=None):
         user = self.get_user(email=email, name=name, id=id, user=user)
-        resp = self.adminr(f"/users/{user.id}/enable", headers={"Content-Type": "application/json"})
+        resp = self.adminr(f"/users/{user.id}/enable", headers={"Content-Type":"application/json"})
         self.post_user_request(resp)
         L.info(f"Enabled user {user.email} / {user.name} / {user.id}")
         return resp
 
     def disable_user(self, email=None, name=None, id=None, user=None):
         user = self.get_user(email=email, name=name, id=id, user=user)
-        resp = self.adminr(f"/users/{user.id}/disable", headers={"Content-Type": "application/json"})
+        resp = self.adminr(f"/users/{user.id}/disable", headers={"Content-Type":"application/json"})
         self.post_user_request(resp)
         L.info(f"Disabled user {user.email} / {user.name} / {user.id}")
         return resp
 
     def delete_user(self, email=None, name=None, id=None, user=None, sync=True, **kw):
         user = self.get_user(email=email, name=name, id=id, user=user, sync=sync)
-        resp = self.adminr(f"/users/{user.id}/delete", headers={"Content-Type": "application/json"})
+        resp = self.adminr(f"/users/{user.id}/delete", headers={"Content-Type":"application/json"})
         self.post_user_request(resp)
         self.uncache(obj=user, **kw)
         L.info(f"Deleted user {user.email} / {user.name} / {user.id}")
@@ -3547,7 +3552,7 @@ class Client(object):
         L.info(f"Confirmed user {email} / {user_id} in orga {orga.name} / {orga.id}")
         return acl
 
-    def create_group(self, group, orga, users=[], collections=[], token=None):
+    def create_group(self, orga, group, users=[], collections=[], token=None):
         v, i = self.version()
         if i and (v < API_CHANGES["1.27.0"]):
             raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
@@ -3566,15 +3571,13 @@ class Client(object):
         d.load_single()
         return d
 
-    def get_groups(self, orga, sync=None, cache=None, token=None):
+    def get_groups(self, orga, sync=False, cache=None, token=None):
         v, i = self.version()
         if i and (v < API_CHANGES["1.27.0"]):
             raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
         token = self.get_token(token=token)
         orga = self.get_organization(orga, token=token)
         _CACHE = self._cache["groups"]
-        if sync is None:
-            sync = False
         if cache is None:
             cache = True
         if cache is False or sync:
@@ -3688,6 +3691,9 @@ class Client(object):
                    orga=None,
                    users=None,
                    collections=None,
+                   readonly=False,
+                   hidepasswords=False,
+                   manage=False,
                    sync=None, token=None):
         v, i = self.version()
         if i and (v < API_CHANGES["1.27.0"]):
@@ -3702,12 +3708,16 @@ class Client(object):
         payload = {
             "users": get_ids(users),
             "name": group.name,
-            "collections": []
+            "collections": [],
         }
-        if len(collections) > 0 and isinstance(collections[0], Groupcollectiondetails):
-            payload["collections"] = [i.to_payload() for i in collections]
-        else:
-            payload["collections"] = collections
+        if collections:
+            orga = self.get_organization(group.organizationId, token=token, sync=sync)
+            dcollections = self.collections_to_payloads(
+                collections, orga=orga, token=token
+            )
+            payload["collections"] = self.compute_accesses(
+                dcollections, readonly=readonly, hidepasswords=hidepasswords, manage=manage
+            )["payloads"]
         resp = self.r(f"/api/organizations/{group.organizationId}/groups/{_id}", json=payload, method="put",
                       token=token)
         self.assert_bw_response(resp, expected_status_codes=[200, 500])
