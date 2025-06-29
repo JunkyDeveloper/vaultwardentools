@@ -1431,6 +1431,9 @@ class Client(object):
             r, cache=self._cache["collections"], cache_key=cache_key, **kw
         )
 
+    def cache_organization_users(self, r, org_id, **kw):
+        return self._cache_objects(r, "organizations", cache=self._cache[org_id]["users"])
+
     def add_cipher(self, ret, obj, **kw):
         return self._cache_object(obj, cache=ret)
 
@@ -2493,12 +2496,30 @@ class Client(object):
         users = {"id":{}, "email":{}}
         for user in res.json()["data"]:
             profile = BWFactory.construct(user, client=self, unmarshall=True, )
-            users["id"][user["id"]] = user
-            users["email"][user["email"]] = user
+            users["id"][user["id"]] = profile
+            users["email"][user["email"]] = profile
         return users
 
-    def get_user_from_organization(self, orga, email, sync=False, token=None):
-        return self.get_users_from_organization(orga, include_groups=False, sync=sync, token=token)["email"][email]
+    def get_user_from_organization(self, orga, user, sync=False, token=None):
+        token = self.get_token(token)
+        if isinstance(user, Groupdetails):
+            if not sync:
+                return user
+            else:
+                self.get_users_from_organization(orga, token, sync)
+        _id = self.item_or_id(user)
+        orga = self.get_organization(orga, token=token)
+        try:
+            return self._cache["orga"]["id"][orga.id]["email"][_id]
+        except KeyError:
+            pass
+        try:
+            return self._cache["orga"]["id"][orga.id]["name"][_id]
+        except KeyError:
+            pass
+        exc = OrganizationNotFound(f"No such user found {email}")
+        exc.criteria = [orga]
+        raise exc
 
     def assert_bw_response(
             self, response, expected_status_codes=None, expected_callback=None, *a, **kw
