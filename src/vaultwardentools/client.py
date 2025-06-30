@@ -40,6 +40,7 @@ DEFAULT_BITWARDEN_CACHE = {
     "groups": {"sync": False, SYNC_ALL_GROUPS_ID: deepcopy(DEFAULT_CACHE)},
     "users": deepcopy(DEFAULT_CACHE),
     "organizations": deepcopy(DEFAULT_CACHE),
+    "organization_users": {},
     "collections": {"sync": False, SYNC_ALL_ORGAS_ID: deepcopy(DEFAULT_CACHE)},
     "ciphers": {
         "sync": False,
@@ -57,6 +58,7 @@ PRIVATE_KEY = os.environ.get("BITWARDEN_PRIVATE_KEY") or None
 EMAIL = os.environ.get("BITWARDEN_EMAIL")
 PASSWORD = os.environ.get("BITWARDEN_PW")
 ADMIN_PASSWORD = os.environ.get("BITWARDEN_ADMIN_PASSWORD", "")
+ADMIN_TOKEN = os.environ.get("BITWARDEN_ADMIN_TOKEN", "")
 ADMIN_USER = os.environ.get("BITWARDEN_ADMIN_USER", "")
 CUUID = os.environ.get("BITWARDEN_CLIENT_UUID", "42042042-0042-0042-0042-420004200042")
 TYPMAPPER = {
@@ -281,8 +283,10 @@ class UnimplementedError(BitwardenError):
 class DecryptError(bwcrypto.DecryptError):
     """."""
 
+
 class WrongVersionOfServer(BitwardenError):
     """."""
+
 
 class SearchError(BitwardenError):
     """."""
@@ -468,6 +472,7 @@ class BWFactory(object):
             vaultiersecretid=None,
             unmarshall=False,
     ):
+        self.vaultiersecretid = None
         if unmarshall:
             jsond = unmarshall_value(jsond)
         self._client = client
@@ -646,17 +651,34 @@ class Organization(BWFactory):
     """."""
 
     def __init__(self, *a, **kw):
-        ret = super(Organization, self).__init__(*a, **kw)
+        self.name = None
+        super(Organization, self).__init__(*a, **kw)
         self._complete = False
-        return ret
 
 
 class Organizationuseruserdetails(BWFactory):
     """."""
 
 
+class Groupcollectiondetails(BWFactory):
+    """."""
+    id: str
+    hidePasswords: bool
+    readOnly: bool
+    manage: bool
+
+    def to_payload(self):
+        return {
+            "id": self.id,
+            "hidePasswords": self.hidePasswords,
+            "readOnly": self.readOnly,
+            "manage": self.manage,
+        }
+
+
 class Groupdetails(BWFactory):
     """."""
+    name: str
 
     def load_single(self, jsond=None):
         super(Groupdetails, self).load(jsond)
@@ -665,6 +687,21 @@ class Groupdetails(BWFactory):
                 if i.lower() in ["object"]:
                     val = uncapitzalize(val)
                 setattr(self, i, val)
+
+    def load(self, jsond=None):
+        jsond = self.json or jsond
+        self.json = jsond
+        super(Groupdetails, self).load()
+        collections = []
+        for col in jsond["collections"]:
+            col["object"] = "Groupcollectiondetails"
+            gd = BWFactory.construct(col, client=self, unmarshall=True)
+            collections.append(gd)
+        self.collections = collections
+        return self
+
+    def __str__(self):
+        return self.name
 
 
 class Organizationuseruserminidetails(BWFactory):
@@ -745,6 +782,7 @@ class Collection(BWFactory):
     """."""
 
     def __init__(self, *a, **kw):
+        self.organizationId = None
         BWFactory.__init__(self, *a, **kw)
         self.externalId = getattr(self, "externalId", None)
         self._orga = None
@@ -764,6 +802,7 @@ class Collectiondetails(BWFactory):
     """."""
 
     def __init__(self, *a, **kw):
+        self.organizationId = None
         BWFactory.__init__(self, *a, **kw)
         self.externalId = getattr(self, "externalId", None)
         self._orga = None
@@ -790,6 +829,7 @@ class Client(object):
             password=PASSWORD,
             admin_user=ADMIN_USER,
             admin_password=ADMIN_PASSWORD,
+            admin_token=ADMIN_TOKEN,
             private_key=PRIVATE_KEY,
             client_id="python",
             client_secret=None,
@@ -813,6 +853,7 @@ class Client(object):
             raise RunError("no password")
         self.admin_user = admin_user
         self.admin_password = admin_password
+        self.admin_token = admin_token
         self._broken_ciphers = OrderedDict()
         self.vaultier = vaultier
         self.server = server
@@ -835,9 +876,10 @@ class Client(object):
         self.authentication_cb = authentication_cb
         if login:
             self.login()
-        self._is_vaultwarden = False
+        self._is_vaultwarden = None
         self._version = version
         self._api_keys = None
+        self._token_cookie = None
 
     @property
     def token(self):
@@ -848,6 +890,11 @@ class Client(object):
         self.tokens[self.email] = value
         return self.tokens[self.email]
 
+    def _admin_login(self):
+        resp = self.adminr("", data={"token": self.admin_token})
+        if "VW_ADMIN" in resp.cookies.get_dict():
+            self._token_cookie = resp.cookies.get_dict()["VW_ADMIN"]
+
     def adminr(
             self,
             uri,
@@ -855,19 +902,44 @@ class Client(object):
             headers=None,
             admin_user=None,
             admin_password=None,
+            admin_token=None,
+            retry=True,
             *a,
             **kw,
     ):
-        admin_user = admin_user or self.admin_user
-        admin_password = admin_password or self.admin_password
-        if admin_user and admin_password:
-            kw["auth"] = (admin_user, admin_password)
+        print(uri)
+        if self._is_vaultwarden is None:
+            self.version()
+        if not self._is_vaultwarden:
+            admin_user = admin_user or self.admin_user
+            admin_password = admin_password or self.admin_password
+            if admin_user and admin_password:
+                kw["auth"] = (admin_user, admin_password)
+        else:
+            kw["cookies"] = {"VW_ADMIN": self._token_cookie}
         url = uri
         if not url.startswith("http"):
             url = f"{self.server}/admin{uri}"
         if headers is None:
             headers = {}
-        return getattr(requests, method.lower())(url, headers=headers, *a, **kw)
+        resp = getattr(requests, method.lower())(url, headers=headers, *a, **kw)
+        if resp.status_code in [401] and admin_token is not False and retry:
+            sleep(0.05)
+            L.debug(
+                f"Access denied, trying to retry after refreshing token"
+            )
+            self._admin_login()
+            kw["cookies"] = {"VW_ADMIN": self._token_cookie}
+            resp = getattr(requests, method.lower())(url, headers=headers, *a, **kw)
+        if resp.status_code == 429 and retry is not False:
+            L.debug(f"Too many requests, retrying after 30s {url}")
+            sleep(60)
+            resp = getattr(requests, method.lower())(url, headers=headers, *a, **kw)
+        elif resp.status_code > 399 and retry is not False:
+            sleep(0.5)
+            L.debug(f"Something went wrong, retrying {url}")
+            resp = getattr(requests, method.lower())(url, headers=headers, *a, **kw)
+        return resp
 
     @property
     def api_keys(self):
@@ -1364,9 +1436,10 @@ class Client(object):
         return self._cache_objects(r, cache=self._cache["groups"], cache_key=cache_key, uniques=["id"], **kw)
 
     def cache_collection(self, r, cache_key=SYNC_ALL_ORGAS_ID, **kw):
-        return self._cache_objects(
-            r, cache=self._cache["collections"], cache_key=cache_key, **kw
-        )
+        return self._cache_objects(r, cache=self._cache["collections"], cache_key=cache_key, **kw)
+
+    def cache_organization_users(self, r, org_id, **kw):
+        return self._cache_objects(r, org_id, cache=self._cache["organization_users"], uniques=["id", "email"], **kw)
 
     def add_cipher(self, ret, obj, **kw):
         return self._cache_object(obj, cache=ret)
@@ -1945,7 +2018,7 @@ class Client(object):
                 self.assert_bw_response(resp)
                 ciphers = resp.json()
             except ResponseError:
-                raise
+                raise BitwardenError("response error")
             except json.JSONDecodeError:
                 exc = CiphersError("ciphers are not in json")
                 exc.response = resp
@@ -2422,15 +2495,47 @@ class Client(object):
         exc.criteria = criteria
         raise exc
 
-    def get_users_from_organization(self, orga, include_groups=False, token=None):
+    def get_users_from_organization(self, orga, include_groups=False, sync=False, token=None):
         token = self.get_token(token)
         orga = self.get_organization(orga, token=token)
         res = self.r(f"/api/organizations/{orga.id}/users" + ("?includeGroups=true" if include_groups else ""),
                      method="get")
-        users = {}
         for user in res.json()["data"]:
-            users[user["id"]] = BWFactory.construct(user, client=self, unmarshall=True, )
-        return users
+            self.cache_organization_users(BWFactory.construct(user, client=self, unmarshall=True, ), orga.id)
+        return self.cache_organization_users([], orga.id)
+
+    def get_user_from_organization(self, orga, user, sync=False, token=None):
+        token = self.get_token(token)
+        if isinstance(user, Organizationuseruserdetails):
+            if not sync:
+                return user
+            else:
+                self.get_users_from_organization(orga, token, sync)
+        _id = self.item_or_id(user)
+        orga = self.get_organization(orga, token=token)
+        try:
+            cache = self.cache_organization_users([], orga.id)
+        except KeyError:
+            cache = self.get_users_from_organization(orga, token, sync)
+        try:
+            return cache["id"][_id]
+        except KeyError:
+            pass
+        try:
+            return cache["email"][_id]
+        except KeyError:
+            users = self.get_users_from_organization(orga, token, sync)
+        try:
+            return users["id"][_id]
+        except KeyError:
+            pass
+        try:
+            return users["email"][_id]
+        except KeyError:
+            pass
+        exc = OrganizationNotFound(f"No such user found {user}")
+        exc.criteria = [orga]
+        raise exc
 
     def assert_bw_response(
             self, response, expected_status_codes=None, expected_callback=None, *a, **kw
@@ -2477,21 +2582,21 @@ class Client(object):
 
     def enable_user(self, email=None, name=None, id=None, user=None):
         user = self.get_user(email=email, name=name, id=id, user=user)
-        resp = self.adminr(f"/users/{user.id}/enable")
+        resp = self.adminr(f"/users/{user.id}/enable", headers={"Content-Type": "application/json"})
         self.post_user_request(resp)
         L.info(f"Enabled user {user.email} / {user.name} / {user.id}")
         return resp
 
     def disable_user(self, email=None, name=None, id=None, user=None):
         user = self.get_user(email=email, name=name, id=id, user=user)
-        resp = self.adminr(f"/users/{user.id}/disable")
+        resp = self.adminr(f"/users/{user.id}/disable", headers={"Content-Type": "application/json"})
         self.post_user_request(resp)
         L.info(f"Disabled user {user.email} / {user.name} / {user.id}")
         return resp
 
     def delete_user(self, email=None, name=None, id=None, user=None, sync=True, **kw):
         user = self.get_user(email=email, name=name, id=id, user=user, sync=sync)
-        resp = self.adminr(f"/users/{user.id}/delete")
+        resp = self.adminr(f"/users/{user.id}/delete", headers={"Content-Type": "application/json"})
         self.post_user_request(resp)
         self.uncache(obj=user, **kw)
         L.info(f"Deleted user {user.email} / {user.name} / {user.id}")
@@ -2977,7 +3082,7 @@ class Client(object):
                 collections, orga=orga, token=token
             )
             params["collections"] = self.compute_accesses(
-                dcollections, readonly=readonly, hidepasswords=hidepasswords,manage=manage
+                dcollections, readonly=readonly, hidepasswords=hidepasswords, manage=manage
             )["payloads"]
         u = f"/api/organizations/{orga.id}/users/invite"
         v, i = self.version()
@@ -3170,7 +3275,7 @@ class Client(object):
         return payloads
 
     def compute_accesses(
-            self, dcollections, remove=False, readonly=False, hidepasswords=False,manage=False
+            self, dcollections, remove=False, readonly=False, hidepasswords=False, manage=False
     ):
         ret = {"payloads": [], "remove": []}
         for cid, col in (dcollections or {}).items():
@@ -3491,27 +3596,25 @@ class Client(object):
         token = self.get_token(token=token)
         orga = self.get_organization(orga, token=token)
         data = {
-            "collections": collections,
+            "collections": get_ids(collections),
             "name": group,
-            "users": users
+            "users": get_ids(users)
         }
         log = f'Creating group {data["name"]}/'
 
-        resp = self.r(f"/api/organizations/{orga.id}/groups", json=data, method="get")
+        resp = self.r(f"/api/organizations/{orga.id}/groups", json=data, method="post")
         self.assert_bw_response(resp)
         d = Groupdetails(resp.json())
         d.load_single()
         return d
 
-    def get_groups(self, orga, sync=None, cache=None, token=None):
+    def get_groups(self, orga, sync=False, cache=None, token=None):
         v, i = self.version()
         if i and (v < API_CHANGES["1.27.0"]):
             raise WrongVersionOfServer(f"the server has version {v} and doesn't support groups")
         token = self.get_token(token=token)
         orga = self.get_organization(orga, token=token)
         _CACHE = self._cache["groups"]
-        if sync is None:
-            sync = False
         if cache is None:
             cache = True
         if cache is False or sync:
@@ -3577,7 +3680,7 @@ class Client(object):
             pass
         exc = GroupNotFound(f"No such group found {group}")
         exc.criteria = [group]
-        raise
+        raise exc
 
     def delete_group(self, group, orga, token=None):
         """Deletes only via name if only one group exists with this name"""
@@ -3617,14 +3720,14 @@ class Client(object):
             orga = self.get_organization(group.organizationId, token=token)
         users_org = self.get_users_from_organization(orga, token=token)
         for user_id in resp.json():
-            users[user_id] = deepcopy(users_org[user_id])
+            users[user_id] = deepcopy(users_org["id"][user_id])
         return users
 
     def edit_group(self,
                    group,
-                   orga = None,
-                   users = None,
-                   collections = None,
+                   orga=None,
+                   users=None,
+                   collections=None,
                    readonly=False,
                    hidepasswords=False,
                    manage=False,
@@ -3645,14 +3748,22 @@ class Client(object):
             "collections": [],
         }
         if collections:
-            orga = self.get_organization(group.organizationId, token=token, sync=sync)
-            dcollections = self.collections_to_payloads(
-                collections, orga=orga, token=token
-            )
-            payload["collections"] = self.compute_accesses(
-                dcollections, readonly=readonly, hidepasswords=hidepasswords, manage=manage
-            )["payloads"]
-        resp = self.r(f"/api/organizations/{group.organizationId}/groups/{_id}", json=payload, method="put", token=token)
+            if not isinstance(collections, list) and not isinstance(collections, str):
+                collections = [collections]
+            if isinstance(collections[0], Groupcollectiondetails):
+                payload["collections"] = [col.to_payload() for col in collections]
+            elif isinstance(collections, str):
+                payload["collections"] = collections
+            else:
+                orga = self.get_organization(group.organizationId, token=token, sync=sync)
+                dcollections = self.collections_to_payloads(
+                    collections, orga=orga, token=token
+                )
+                payload["collections"] = self.compute_accesses(
+                    dcollections, readonly=readonly, hidepasswords=hidepasswords, manage=manage
+                )["payloads"]
+        resp = self.r(f"/api/organizations/{group.organizationId}/groups/{_id}", json=payload, method="put",
+                      token=token)
         self.assert_bw_response(resp, expected_status_codes=[200, 500])
         return resp
 
